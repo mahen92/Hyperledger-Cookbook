@@ -35,85 +35,12 @@ from sawtooth_mkt.processor.config.mkt import \
     merge_mkt_config
 
 
-DISTRIBUTION_NAME = 'sawtooth-mkt'
-
-
-def parse_args(args):
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawTextHelpFormatter)
-
-    parser.add_argument(
-        '-C', '--connect',
-        help='Endpoint for the validator connection')
-
-    parser.add_argument('-v', '--verbose',
-                        action='count',
-                        default=0,
-                        help='Increase output sent to stderr')
-
-    try:
-        version = pkg_resources.get_distribution(DISTRIBUTION_NAME).version
-    except pkg_resources.DistributionNotFound:
-        version = 'UNKNOWN'
-
-    parser.add_argument(
-        '-V', '--version',
-        action='version',
-        version=(DISTRIBUTION_NAME + ' (Hyperledger Sawtooth) version {}')
-        .format(version),
-        help='print version information')
-
-    return parser.parse_args(args)
-
-
-def load_mkt_config(first_config):
-    default_mkt_config = \
-        load_default_mkt_config()
-    conf_file = os.path.join(get_config_dir(), 'mkt.toml')
-
-    toml_config = load_toml_mkt_config(conf_file)
-
-    return merge_mkt_config(
-        configs=[first_config, toml_config, default_mkt_config])
-
-
-def create_mkt_config(args):
-    return MktConfig(connect=args.connect)
 
 
 def main(args=None):
-    if args is None:
-        args = sys.argv[1:]
-    opts = parse_args(args)
-    processor = None
-    try:
-        arg_config = create_mkt_config(opts)
-        mkt_config = load_mkt_config(arg_config)
-        processor = TransactionProcessor(url=mkt_config.connect)
-        log_config = get_log_config(filename="mkt_log_config.toml")
-
-        # If no toml, try loading yaml
-        if log_config is None:
-            log_config = get_log_config(filename="mkt_log_config.yaml")
-
-        if log_config is not None:
-            log_configuration(log_config=log_config)
-        else:
-            log_dir = get_log_dir()
             # use the transaction processor zmq identity for filename
-            log_configuration(
-                log_dir=log_dir,
-                name="mkt-" + str(processor.zmq_id)[2:-1])
-
-        init_console_logging(verbose_level=opts.verbose)
-        # The prefix should eventually be looked up from the
-        # validator's namespace registry.
-        mkt_prefix = hashlib.sha512('mkt'.encode("utf-8")).hexdigest()[0:6]
-        handler = MktTransactionHandler(namespace_prefix=mkt_prefix)
-
-        processor.add_handler(handler)
-
-        processor.start()
+            processor = TransactionProcessor(url=mkt_config.connect)
+            processor.start()
     except KeyboardInterrupt:
         pass
     except Exception as e:  # pylint: disable=broad-except
